@@ -1,0 +1,199 @@
+Prepare the following scenarios for your database:
+
+  - create a stored procedure that inserts data in tables that are in a m:n relationship; if one insert fails, all the operations performed by the procedure must be rolled back (grade 3);
+  - create a stored procedure that inserts data in tables that are in a m:n relationship; if an insert fails, try to recover as much as possible from the entire operation: for example, if the user wants to add a book and its authors, succeeds creating the authors, but fails with the book, the authors should remain in the database (grade 5);
+  - reproduce the following concurrency issues under pessimistic isolation levels: dirty reads, non-repeatable reads, phantom reads, and a deadlock (4 different scenarios); you can use stored procedures and / or stand-alone queries; find solutions to solve / workaround the concurrency issues (grade 9);
+  - reproduce the update conflict under an optimistic isolation level (grade 10).
+
+Obs.
+
+* Prepare test cases covering both the happy scenarios and the ones with errors (this applies to stored procedures). Be prepared to explain all your scenarios and implementations.
+
+* Don’t use IDs as input parameters for your stored procedures. Validate all parameters (try to use functions when needed).
+
+* Setup a logging system to track executed actions for all scenarios.
+
+Recommendation: use TRY…CATCH to handle errors.
+
+References:
+– lecture / seminar notes
+– https://docs.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql?view=sql-server-ver15
+– https://docs.microsoft.com/en-us/sql/t-sql/language-elements/transactions-transact-sql?redirectedfrom=MSDN&view=sql-server-ver15
+
+-----------------------------------------------------------------------------------------------
+
+Transaction: block of SQL instructions for modifying the DB (combine multiple operations into a 
+		single unit of work)
+
+- if 1 of the instructions cannot be executed, then all the instructions of the transaction should
+	be canceled
+- the actions of each user are processed by using a different transaction
+
+- AFTER the execution of the transaction we must specify if we want to keep those changes in the 
+	DB or not
+- if you want to keep the changes, you COMMIT the transaction, otherwise you
+	REVERT/cancel/rollback the transaction
+
+- OBJECTIVE of the transactions: maximize throughput => transactions must be allowed to
+	be executed in parallel (ideally, the transaction should be serializable)
+
+-> as a conclusion: the execution in parallel and the serial execution should produce the SAME
+	result
+
+-> ACID properties - they ask the execution result of the transactions to be the same even if 
+	they are executed serially or in parallel 
+	
+	Atomicity = all the operations from the block are executed, or none of the operations from the block are executed 
+	Consistency = preserve the integrity of the DB after every transaction
+	Isolation = the transaction that is executed should not be affected by other transactions (isolation levels)
+	Durability = after the successful execution of a transaction (with committed), the modifications should persist in the DB
+
+-----------------------------------------------
+Transaction in SQL Server (the commands):
+
+BEGIN TRAN
+COMMIT TRAN - all the modifications should be saved
+ROLLBACK TRAN - all the modifications that were done should be canceled and the DB returns to the state before the transaction
+
+SET IMPLICIT_TRANSACTION ON - enables chained transactions -> when this command is executed, the sys is in 'implicit transaction mode'	
+							meaning that if the no. of BEGIN TRAN stmts is 0, any of the following TransactSQL stmt begins a new transaction
+		- when is command is off, the transaction mode is 'autocommit', meaning that each of the following TSQL stmt is bounded by an 
+			unseen BEGIN TRAN and an unseen COMMIT TRAN stmt 
+
+SET XACT_ABORT ON - specifies whether the SQL Server AUTOMATICALLY rolls back the CURRENT transaction when a TSQL stmt raises an runtime ERROR 
+						(this is the default case for the triggers)
+				- when this is off (by default it is off), the action depends on the severity of the error (the entire transaction maybe rolled back or not)
+
+In SQL Server -> 2 types of transactions: 
+- local transactions ( single phase transaction that is handled by the DB directly )
+- distributed transactions (it is coordinated by a transaction monitor and uses fail-safe mechanisms for the transaction resolution - eg: 2 phase commit)
+
+We can also have transaction in transaction -> NESTED transactions (but is's only sintactically).
+
+Named SAVEPOINTS - allow a portion of work in a transaction to be rolled back (they are used when it's necessary to roll back a part of a SQL transaction)
+
+------------------------------------------------------------
+Transaction isolation tackles 4 major CONCURRENCY PROBLEMS:
+
+- lost updates  - 2 transactions modify the same piece of data (the same col , on the same row at the same time)):
+					1 transaction updates the column, while another transaction that starts shortly afterwards and does not see this update
+					before updating the same value itself -> the result of the first transaction is lost 
+
+- dirty reads - a transaction (reader) reads uncommitted data, i.e., data changed by another ongoing transaction
+					(if the 1st transaction fails, the problem is that the 2nd already red and used the uncommitted data from the 1st one)
+
+- unrepeatable reads - once the 2nd transaction reads the item, a write operation from the 1st transaction changes the value of that item.
+						So, when another read operation is performed in the 2nd transaction, it reads the new value, which has been updated
+						by the 1st one
+						(=> different reads of the row will return different values)
+
+- phantoms - phantom reads occurs when a transaction executes a query twice and it gets a different no of rows in the result set
+				(bc a 2nd transaction inserts new rows between the queries executions of the 1st transaction)
+				Also, similar problem of the other transaction deletes rows.
+
+---------------------------------------------------------------
+Transaction ISOLATION is achieved with LOCKING mechanism
+
+- write locks -> exclusive locks, i.e. they don't allow other readers / writers
+- read locks -> allow other readers, don't allow other writers
+
+- well-formed transaction -> obtains the correct lock type before using the data
+- 2-phased transaction -> holds all the locks until all the locks have been obtained
+- isolation levels determine: 
+		- if read locks are acquired for read operations
+		- the duration of the acquired locks
+		- if key-range locks are acquired to prevent phantoms (these locks are placed on the key of the index that is used to retreive the data)
+
+Locking in SQL Server:
+- locks - usually managed by the Lock Manager (not via apps)
+- lock granularity: Row / Key, Page, Table, Extent*, Database
+	- RowID - used to lock a single row in the table (the table must be complete ?)
+	- Page - 8KB DataPage or IndexPage, where the lock can be placed on the page level also
+	- Extent - contiguous group of 8 DataPages 
+	- Database - can be locked for some users who have only certain permissions
+
+- hierarchy of related locks -> Top: Database, Bottom: Tables, Pages, Rows => locks can be acquired at several levels
+	For lock escalation, there should be >5000 locks per object (pros & cons)
+
+DURATION of locks - controlled by the isolation level
+- until the end of the operation
+- until the end of the transaction
+
+LOCK TYPES:
+- Shared (S) - read operations
+- Update (U) - S lock that is anticipated to become an X lock; used bc during the read phase SQL Server does not want other transactions to have
+				access to the object to be changed. It can be inposed on a row that already has a shared lock. Once the transaction that holds the 
+				update lock is ready to change the data, the update lock will be transformed in an exclusive lock 
+- Exclusive (X) - write operations, ensures that updates cannot be done to the same resources at the same time 
+- Intent (IX, IS, SIX) - intention to lock (for performance improvement purposes)
+- Schema (Sch-M, Sch-S) - used when an operation depending on the schema of a table is executing 
+			- schema modification lock - will be acquired when a data-definition-language-statement is executed 
+				SQL Server allows a single schema modification lock on any locked object. In order to modify a table, a transaction must 
+				wait to aquire a schema modification lock. After the modification is completed, the lock is released. Eg: index-rebuild
+			- schema stability lock - helps ensure the integrity of the table
+
+- Bulk Update (BU) - bulk load data concurrently into the same table (used at BULK INSERT statement, with TABLOCK hint)
+					usually used when the user wants to insert huge data in DB
+- Application Locks - locks on application resources 
+- Key-Range - lock multiple rows based on a condition  (eg: ...WHERE grade between 8 and 10)
+
++ every connection to a DB acquires a Shared_Transaction_Workspace lock 
+	(exceptions: connections to master, tempdb); used to prevent the DROP and RESTORE
+----------------------------------------------------------------
+
+ISOLATION LEVELS in SQL Server:
+
+- READ UNCOMMITED - no locks when reading data (dirty reads can happen)
+- READ COMMITED - (default) holds S locks during the execution of the statement (prevents dirty reads) 
+- REPEATABLE READ - holds S locks for the duration of the transaction (prevents unrepeatable reads)
+- SERIALIZABLE: holds locks during the entire transaction (prevents phantom reads)
+
+- SNAPSHOT can be used only on a snapshot of the data 
+
+SQL syntax: 
+
+SET TRANSACTION ISOLATION LEVEL ...
+
+---------------------------------------------------------------------
+DEADLOCKS - SQL Server uses deadlock detection
+
+- occures when 2 transactions are competing for exclusive access to a resource, but they can't bc the other transaction is preventing it
+- the cheapest transaction is terminated and a error is returned (the only solution is to have a winner and a victim, only the winner will be able to modify the DB) 
+- the error 1205 should be captured and properly handled 
+- SET LOCK_TIMEOUT - specify how long (in milliseconds) a transaction waits for a locked resource to be released, 0 = immediate termination
+- SET DEADLOCK_PRIORITY - values: {LOW, NORMAL, HIGH, <numeric-priority from -10 to 10>} to decide the winner and the victim transactions 
+
+To reduce deadlocks: 
+- transactions - short & in a single batch
+- obtain / verify input data from the user prior to opening a transaction
+- access resources in the same order
+- use a lower / a row versioning isolation level
+- reduce the amount of accessed data 
+
+----------------------------------------------------------------------
+Multiversioning
+
+RLV - Row-Level Versioning - useful when the user needs committed data, but not necessarily the most recent version
+ - a record contains a transaction sequence number (TSN); all the versions are kept in a linked list
+
+Read Committed Snapshot Isolation & Full Snapshot Isolation (SNAPSHOT ISOLATION)
+ - the reader never blocks; instead, it obtains data that has been previously committed
+
+ The tempdb database stores all the older versions of the data (a snapshot of the DB can be assembled using these old(er) versions)
+
+ALTER DATABASE MyDatabase
+SET READ_COMMITTED_SNAPSHOT ON -> sql server uses a row level versioning implementation of the read committed isolation
+
+-> this operation reads the committed version of the data before the execution of the operation 
+
+ALTER DATABASE MyDatabase
+SET ALLOW_SNAPSHOT_ISOLATION ON 
+
+- operations see the most recent committed data as of the beginning of their transaction => 
+	- snapshot of the data at the transaction level
+	- consistent reads at the transaction level
+	- SNAPSHOT isolation level
+
+Once we configure a DB to use one of the snapshot based isolation levels, every update and delete operation will create a version.
+
+Optimism: not many update conflicts will occure 
