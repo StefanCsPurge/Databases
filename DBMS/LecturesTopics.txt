@@ -1,0 +1,170 @@
+LECTURE 1 - introduction - Transactions
+ 
+- DBMS Architecture
+- CONCURRENCY in a DBMS
+- Transactions (read, write, commit, abord)
+- Transaction properties (ACID - Atomicity, Consitency, Isolation, Durability)
+- Interleaved Executions - Anomalies
+- Scheduling Transactions
+- Serializability
+
+
+LECTURE 2 - Transactions. Concurrency Control
+
+- Conflict serializability (Precedence graph)
+- View serializability
+- Recoverable schedules, Avoid cascading aborts
+- Lock-Based Concurrency Control (SLock, XLock, lock table, transactions table)
+
+
+LECTURE 3 - Transactions. Concurrency Control
+
+- locking protocols (Strict Two Phase Locking, Two Phase Locking)
+- strict schedules
+- deadlocks (prevention - Wait-die/Wound-wait , detection - waits-for graph, timeout mechanism)
+- the phantom problem
+- isolation levels (read uncomm, read comm, rep read, serializable)
+
+
+LECTURE 4 - Crash Recovery
+
+- Recovery Manager
+- Transaction Failure - Causes
+- Normal Execution (obj reading/writing, Buffer Pool)
+- Buffer Manager
+- Writing objects - steal / no steal, force / no force
+- ARIES, system restart after crash (3 phases)
+    (Algorithm for Recovery and Isolation Exploiting Semantics)
+- fundamental priciple - Write-Ahead Logging
+- Storage Media - Volatile, Non-volatile, Stable
+- The Log
+- The Transaction Table & The Dirty Page Table
+- Checkpointing
+
+
+LECTURE 5 - Crash Recovery
+
+- system restart after a crash - 3 phases (Analysis, Redo, Undo)
+- Example 1 - system crashes before the 6th log is written to stable storage (Analysis, Redo, Undo)
+- Example 2 - system crashes during Undo
+
+
+LECTURE 6 - SECURITY
+
+- DB protection: security & integrity
+- aspects related to security: legal, ethical aspects, physical controls, software controls, operational problems
+- similarities between data security and data integrity: constraints 
+- the DBMS’s authorization subsystem (security subsystem)
+- access request: requested object, requested operation, requesting user
+- authentication mechanism (password scheme, fingerprint etc)
+- main approaches to data security in a DBMS: discretionary control & mandatory control
+    - discretionary control: users have different access rights on different database objects (the operations users are allowed to perform are explicitly specified)
+    - mandatory control: each object has a classification level, each user has a clearance level (levels - strict ordering (e g top secret secret), Bell & La Padula rules)
+- audit trail: DB administrator should monitor the database and keep track of all operations performed by users via an audit trail
+
+- SQL Injection: execution of a SQL statement that's generated using input data from the user
+    (user enters code into input variables and this code is concatenated with the SQL statements)
+  1. changing a user's authentication statement
+  2. obtaining information from the database
+  3. changing data in tables
+  4. changing a user's password 
+  + prevention: data validation, modify problematic characters, use parameterized statements
+
+- data encryption 
+- codes(replace one word or phrase with another word/number/symbol) and ciphers (replace each letter with another letter/number/symbol)
+- steganography(hide the existence of the message) and cryptography (hide the meaning of the message - encryption)
+- algorithms and keys
+- encryption algorithm - example
+
+
+LECTURE 7 - Evaluating Relational Operators. Query Optimization
+
+- queries - composed of relational operators: selection(sigma), projection(pi), join, cross-product, set-difference, union, intersection
+            - grouping and aggregate operators; every operation returns a relation -> operations can be composed
+- optimizer (input: SQL query Q, output: an efficient execution plan for evaluating Q)
+- algorithms for operators - based on 3 techniques: iteration, indexing, partitioning
+- access paths (selectivity)
+- general selection conditions (∧, v)
+- joins
+- Simple Nested Loops Join 
+- Page-Oriented Nested Loops Join 
+- Block Nested Loops Join (cost)
+- Index Nested Loops Join
+
+
+LECTURE 8 - Evaluating Relational Operators. Query Optimization
+
+- running example - schema
+- sorting (internal , external)
+- Simple Two-Way Merge Sort (pass 0, 1, 2...)
+- External Merge Sort
+- Sort-Merge Join
+
+
+LECTURE 9 - Evaluating Relational Operators. Query Optimization
+
+- running example - schema
+- Hash Join - equality join, one join column; 
+    PHASES: partitioning (building phase) & probing (matching phase)
+    memory requirements
+- general join conditions (equalities over several attributes, inequality comparison)
+- no join algorithm is uniformly superior to others
+- Selection: simple selections, general selections
+- Projection: Projection Based on Sorting / Hashing
+- Set Operations 
+- Aggregate Operations 
+- Query Optimization (schema)
+- Query Evaluation Plans
+- Pipelined Evaluation 
+- Query Blocks - Units of Optimization (block optimization)
+- Motivating Example 
+
+
+LECTURE 10 - Evaluating Relational Operators. Query Optimization
+
+- running example - schema
+- motivating example 
+- IBM's System R Optimizer 
+- Estimating the Cost of a Plan 
+- Statistics Maintained by the DBMS
+- Estimating Result Sizes
+- Relational Algebra Equivalences
+- Enumeration of Alternative Plans
+    - plans without indexes
+    - plans that use an index: single-index / multiple-index / sorted index / index-only access path
+- linear trees, left-deep trees, bushy trees
+- queries with 1 / several relations in the FROM clause
+- example: unclustered indexes using a2
+- Nested Queries
+
+
+LECTURE 11 - Distributed Databases
+
+- centralized VS distributed DB
+- properties: distributed data independence, distributed transaction atomicity 
+- motivating example 
+- types of distributed DBs: homogeneous, heterogeneous
+- gateway protocols
+- Challenges:
+    - distributed DB design
+    - distributed query processing
+    - distributed concurrency control
+    - reliability of distributed databases 
+- Storing Data in a Distributed DBMS 
+    - horizontal/vertical/hybrid fragmentation
+    - synchronous/asynchronous replication
+- Updating Distributed Data - Synchronous Replication
+- Updating Distributed Data - Asynchronous Replication (peer-to-peer / primary-site)
+- Distributed Query Processing - nonjoin queries, join queries, fetch as needed 
+
+
+LECTURE 12 - Distributed Databases
+
+- Distributed Query Processing - join queries - fetch as needed / ship to 1 site / semijoin / bloomjoin
+- Distributed Catalog Management
+  - centralized system catalog
+  - global system catalog maintained at each site
+  - local catalog maintained at each site
+- Distributed Transaction Management - problems:
+    - distributed concurrency control (lock management, distributed deadlock, phantom deadlocks)
+    - distributed recovery (two phase commit protocol - 2PC, link and remote site failures, 2PC with Presumed Abort)
