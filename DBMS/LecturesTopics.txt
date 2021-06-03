@@ -85,32 +85,45 @@ LECTURE 7 - Evaluating Relational Operators. Query Optimization
 - algorithms for operators - based on 3 techniques: iteration, indexing, partitioning
 - access paths (selectivity)
 - general selection conditions (∧, v)
-- joins
-- Simple Nested Loops Join 
-- Page-Oriented Nested Loops Join 
-- Block Nested Loops Join (cost)
-- Index Nested Loops Join
+- joins; M - noOfPagesInOuterTable, N - noOfPagesInInnerTable, p_E = no. of records in a page of the outer rel
+- Simple Nested Loops Join
+        cost: M + p_E * M * N
+- Page-Oriented Nested Loops Join
+        cost: M + M * N
+- Block Nested Loops Join
+        optimal cost(enough main mem to hold one of the rel): M + N
+        cost: M + number of blocks in outer table * N,  noOfOuterBlocks = [M / sizeOfBlock]
+- Index Nested Loops Join (idx on the join col of inner table)
+        cost: M + p_E * M * costOfFindingCorrespRecInInner   (in a2/a3)
+        costOfFindingCorrespRecInInner = costOfExaminingIdx + costOfReadingRec
+        costOfExaminingIdx = 1.2 (hash index) or 2-4 (B+ tree index)
+        costOfReadingRec ~1
 
 
 LECTURE 8 - Evaluating Relational Operators. Query Optimization
 
 - running example - schema
 - sorting (internal , external)
+- usual cost: 2 * numberOfPages * numberOfPasses , B - no. of buffer pages available
 - Simple Two-Way Merge Sort (pass 0, 1, 2...)
+        cost: 2 * N * ([log_2(N)] + 1)
 - External Merge Sort
+        cost: 2 * N * ([log_B-1[N/B]] + 1)
 - Sort-Merge Join
-
+        cost: costSortOuter + costSortInner + M + N  (assuming partition in inner are scanned only once)
+        worst-case: costSortOuter + costSortInner + M * N
 
 LECTURE 9 - Evaluating Relational Operators. Query Optimization
 
 - running example - schema
 - Hash Join - equality join, one join column; 
     PHASES: partitioning (building phase) & probing (matching phase)
-    memory requirements
+    memory requirements - partition of smaller rel fits in main memory, we need B > sqrt(M)
+    cost: 3 * (M + N)
 - general join conditions (equalities over several attributes, inequality comparison)
 - no join algorithm is uniformly superior to others
 - Selection: simple selections, general selections
-- Projection: Projection Based on Sorting / Hashing
+- Projection: Projection Based on Sorting ( O(MlogM) ) / Hashing (M + 2 * T)
 - Set Operations 
 - Aggregate Operations 
 - Query Optimization (schema)
@@ -127,7 +140,7 @@ LECTURE 10 - Evaluating Relational Operators. Query Optimization
 - IBM's System R Optimizer 
 - Estimating the Cost of a Plan 
 - Statistics Maintained by the DBMS
-- Estimating Result Sizes
+- Estimating Result Sizes: product|𝑅𝑖| * product 𝑅𝐹𝑗
 - Relational Algebra Equivalences
 - Enumeration of Alternative Plans
     - plans without indexes
